@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLS leak demo (throwaway project)</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  input, button { font: inherit; padding: .4rem .6rem; margin: .2rem 0; }
+  input { width: 100%; box-sizing: border-box; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th, td { border: 1px solid #ccc; padding: .4rem .6rem; text-align: left; }
+  .warn { background: #fff3cd; padding: .6rem; border-radius: 6px; }
+  .leak { color: #b00020; font-weight: 600; }
+  .ok { color: #1b7f3b; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>"Any logged-in user can read every booking"</h1>
+<p class="warn">Demo with fake data. Use a throwaway Supabase project only, never a client's.</p>
+
+<label>Project URL <input id="url" placeholder="https://xxxx.supabase.co"></label>
+<label>Anon key <input id="key" placeholder="public anon key"></label>
+<label>Email <input id="email" value="alice@example.test"></label>
+<label>Password <input id="pw" type="password"></label>
+<button id="go">Sign in as Alice and fetch ALL bookings</button>
+
+<p id="status"></p>
+<table id="out" hidden>
+  <thead><tr><th>Customer</th><th>Phone</th><th>Starts</th><th>user_id</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const $ = (id) => document.getElementById(id);
+
+$("go").onclick = async () => {
+  const sb = createClient($("url").value.trim(), $("key").value.trim());
+  const status = $("status"), table = $("out");
+  const { data: auth, error: authErr } = await sb.auth.signInWithPassword({
+    email: $("email").value.trim(), password: $("pw").value });
+  if (authErr) { status.textContent = authErr.message; return; }
+
+  // No filter on user_id: this is what an attacker does, bypassing the app UI.
+  const { data, error } = await sb.from("bookings").select("*");
+  if (error) { status.textContent = error.message; return; }
+
+  const others = data.filter((r) => r.user_id !== auth.user.id).length;
+  status.innerHTML = others
+    ? `<span class="leak">Leak: ${others} row(s) belong to other users.</span>`
+    : `<span class="ok">Only your own rows came back. RLS is working.</span>`;
+  table.hidden = false;
+  table.tBodies[0].replaceChildren(...data.map((r) => {
+    const tr = document.createElement("tr");
+    for (const v of [r.customer, r.phone, new Date(r.starts_at).toLocaleString(), r.user_id.slice(0, 8)])
+      tr.insertCell().textContent = v;
+    return tr;
+  }));
+};
+</script>
+</body>
+</html>
