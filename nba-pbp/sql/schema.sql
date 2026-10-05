@@ -21,7 +21,8 @@ create table if not exists games (
 
 create table if not exists plays (
   game_id        text   not null references games(game_id) on delete cascade,
-  action_number  int    not null,
+  action_id      int    not null,         -- unique sequence within a game
+  action_number  int    not null,         -- NBA's event number; NOT unique (e.g. turnover + steal share one)
   period         smallint not null,
   clock_seconds  numeric(5,1) not null,   -- seconds remaining in the period
   team_id        bigint references teams(team_id),
@@ -37,7 +38,7 @@ create table if not exists plays (
   y              numeric(6,1),
   home_score     int,
   away_score     int,
-  primary key (game_id, action_number)
+  primary key (game_id, action_id)
 );
 
 create index if not exists plays_player_idx on plays (player_id);

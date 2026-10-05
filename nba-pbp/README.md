@@ -11,12 +11,25 @@ python -m nba_pbp.ingest --season 2023-24 --limit 5     # or --game-id 002230000
 ```
 Re-running is safe: each game's plays are replaced in one transaction.
 
+Verified against the live API: `--season 2023-24 --limit 5` loads 5 games / ~2,400 plays, and re-running the same game leaves 504 plays (no duplicates) with its date and teams preserved.
+
+## Sample output
+Real results from that run are in [`sample/`](sample/) for review:
+| file | contents |
+|---|---|
+| [`games.csv`](sample/games.csv) | the 5 games loaded (date, teams, final score) |
+| [`plays_first_40.csv`](sample/plays_first_40.csv) | first 40 plays of game 0022300001 (`plays` table) |
+| [`shots_sample.csv`](sample/shots_sample.csv) | 25 rows of the `shots` view with court coordinates |
+| [`top_fg_scorers.csv`](sample/top_fg_scorers.csv) | result of the query below |
+
+Top field-goal scorers across those 5 games: Brunson 36, Williams 30, Mitchell 30, Dort 24, Curry 23.
+
 ## Schema (`sql/schema.sql`)
 | table | notes |
 |---|---|
 | `teams`, `players` | ids + tricode / name |
 | `games` | date, home/away team, final score |
-| `plays` | one row per event; PK `(game_id, action_number)`; clock stored as seconds remaining; "nobody" ids stored as NULL; shot fields only on field goals |
+| `plays` | one row per event; PK `(game_id, action_id)` (`action_number` is not unique in NBA data); clock stored as seconds remaining; "nobody" ids stored as NULL; shot fields only on field goals |
 | `shots` (view) | field goals with coordinates and `made` flag |
 | `player_game_fg_points` (view) | field-goal points per player per game |
 

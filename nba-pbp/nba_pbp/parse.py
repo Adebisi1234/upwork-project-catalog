@@ -37,6 +37,7 @@ def parse_plays(game_id: str, rows: list[dict]):
             players[player_id] = r["playerName"]
         plays.append({
             "game_id": game_id,
+            "action_id": int(r["actionId"]),
             "action_number": int(r["actionNumber"]),
             "period": int(r["period"]),
             "clock_seconds": clock_to_seconds(r["clock"]),
